@@ -1,0 +1,19 @@
+# ============================================================
+# Runtime dependencies — Freeze Point 1
+# ============================================================
+
+fastapi==0.115.5
+uvicorn==0.32.1
+pydantic==2.9.2
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+
+# ============================================================
+# Future — add when the relevant sprint begins
+# ============================================================
+# sqlalchemy==2.0.36       # PostgreSQL ORM
+# asyncpg==0.30.0          # Async PostgreSQL driver
+# alembic==1.14.0          # DB migrations
+# httpx==0.28.0            # Async HTTP client (engine-to-engine calls)
+# openai==1.57.0           # LLM provider
+# boto3==1.35.79           # AWS CloudWatch + Bedrock

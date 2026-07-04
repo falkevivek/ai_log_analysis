@@ -1,0 +1,98 @@
+version: "3.9"
+
+# ============================================================
+# Enterprise Intelligent Incident Diagnosis Platform
+# Local Development Compose File
+#
+# Services:
+#   postgres  – PostgreSQL 16 database
+#   api       – FastAPI AI Analysis Engine
+#
+# Usage:
+#   docker compose up -d            # start all services
+#   docker compose logs -f api      # tail API logs
+#   docker compose down             # stop and remove containers
+#   docker compose down -v          # also remove volumes (wipes DB)
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # PostgreSQL 16
+  # ----------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai_analysis_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ai_analysis_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-local_dev_password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-ai_analysis_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ai_analysis_network
+
+  # ----------------------------------------------------------
+  # FastAPI – AI Analysis Engine
+  # ----------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: ai_analysis_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: ${DEBUG:-false}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-ai_analysis_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-local_dev_password}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FILE_ENABLED: "true"
+      LOG_FILE_PATH: /app/logs/app.log
+    volumes:
+      - api_logs:/app/logs
+    ports:
+      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - ai_analysis_network
+
+# ============================================================
+# Volumes
+# ============================================================
+volumes:
+  postgres_data:
+    name: ai_analysis_postgres_data
+  api_logs:
+    name: ai_analysis_api_logs
+
+# ============================================================
+# Networks
+# ============================================================
+networks:
+  ai_analysis_network:
+    name: ai_analysis_network
+    driver: bridge
