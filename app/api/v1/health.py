@@ -64,7 +64,7 @@ async def health_check(request: Request) -> JSONResponse:
 
     # Storage component — always healthy for in-memory backend.
     # Future: replace with an async DB ping when PostgreSQL is introduced.
-    storage_stats = store.stats()
+    storage_stats = await store.stats()
     components: dict[str, str] = {
         "storage": "in-memory",
         "storage_records": str(sum(storage_stats.values())),

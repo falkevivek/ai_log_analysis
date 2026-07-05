@@ -9,10 +9,9 @@ Following the Dependency Inversion Principle (D), the high-level business logic
 (engines, routers) depends on the abstract `StorageInterface` rather than
 concrete implementations (like in-memory dictionary or SQLAlchemy sessions).
 
-When PostgreSQL is adopted:
-1. Create a `PostgresStore` implementing `StorageInterface`.
-2. Bind the new implementation in the composition root (`app/main.py`).
-3. No business logic or route handlers require modification.
+All operations are defined as asynchronous (`async def`) so that when the
+storage backend is migrated to PostgreSQL (using SQLAlchemy + `asyncpg`), the
+route controllers and downstream logic do not need to change their syntax.
 """
 
 from __future__ import annotations
@@ -28,7 +27,7 @@ class StorageInterface(Protocol):
     (such as raw logs, events, timeline events, and incident diagnostic reports).
     """
 
-    def save(self, collection: str, record: dict[str, Any]) -> dict[str, Any]:
+    async def save(self, collection: str, record: dict[str, Any]) -> dict[str, Any]:
         """
         Insert or update a record in the collection.
 
@@ -46,7 +45,7 @@ class StorageInterface(Protocol):
         """
         ...
 
-    def get(self, collection: str, record_id: str) -> dict[str, Any] | None:
+    async def get(self, collection: str, record_id: str) -> dict[str, Any] | None:
         """
         Retrieve a single record from a collection by ID.
 
@@ -54,37 +53,37 @@ class StorageInterface(Protocol):
         """
         ...
 
-    def list(self, collection: str) -> list[dict[str, Any]]:
+    async def list(self, collection: str) -> list[dict[str, Any]]:
         """
         List all records in a collection, ordered by creation time ascending.
         """
         ...
 
-    def delete(self, collection: str, record_id: str) -> bool:
+    async def delete(self, collection: str, record_id: str) -> bool:
         """
         Delete a record by ID. Returns True if deleted, False otherwise.
         """
         ...
 
-    def clear(self, collection: str) -> None:
+    async def clear(self, collection: str) -> None:
         """
         Clear all records in a collection (primarily for testing/development resets).
         """
         ...
 
-    def count(self, collection: str) -> int:
+    async def count(self, collection: str) -> int:
         """
         Return the total number of records in a collection.
         """
         ...
 
-    def collections(self) -> list[str]:
+    async def collections(self) -> list[str]:
         """
         Return names of all active collections containing records.
         """
         ...
 
-    def stats(self) -> dict[str, int]:
+    async def stats(self) -> dict[str, int]:
         """
         Return health stats and record counts per collection.
         """

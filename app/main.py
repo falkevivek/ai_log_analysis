@@ -8,8 +8,8 @@ without containing any business logic itself.
 
 Responsibilities
 ----------------
-1. Configure logging before anything else.
-2. Define the lifespan context (startup / shutdown hooks).
+1. Define the lifespan context (startup / shutdown hooks).
+2. Configure logging during application startup lifespan.
 3. Register middleware, exception handlers, and API routers.
 4. Expose the ``app`` instance consumed by Uvicorn.
 
@@ -37,10 +37,8 @@ from app.middleware.request_logging import RequestLoggingMiddleware
 from app.storage.memory import InMemoryStore
 from app.api.v1 import health as health_router
 
-# Configure logging before importing anything that logs.
-_settings = get_settings()
-configure_logging(_settings.log_level)
-
+# Lazy-loaded logger. Module-level logger is fine to declare here,
+# but it won't emit styled logs until configure_logging() executes inside lifespan.
 logger = logging.getLogger("ai_analysis_engine.main")
 
 
@@ -54,6 +52,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Manage application lifecycle resources.
 
     Startup:
+        Configure application logging from settings dynamically.
         Initialise the in-memory store and attach it to ``app.state``.
         Future: open PostgreSQL connection pool, warm ML model caches.
 
@@ -61,7 +60,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         Release any held resources.
         Future: close connection pool, flush queues.
     """
-    logger.info("Starting %s v%s (%s)", _settings.app_name, _settings.app_version, _settings.environment)
+    settings = get_settings()
+
+    # Move logging setup inside startup context so it runs dynamically
+    # and has no side effects during import time.
+    configure_logging(settings.log_level)
+
+    logger.info("Starting %s v%s (%s)", settings.app_name, settings.app_version, settings.environment)
 
     # Attach the store to app.state so all route handlers can access it
     # via ``request.app.state.store`` without any dependency injection wiring.
@@ -71,7 +76,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
-    logger.info("Shutting down %s", _settings.app_name)
+    logger.info("Shutting down %s", settings.app_name)
 
 
 # ---------------------------------------------------------------------------
@@ -117,10 +122,7 @@ def create_application() -> FastAPI:
     # API routers.
     app.include_router(health_router.router, prefix=settings.api_prefix)
 
-    # Future routers are mounted here:
-    # app.include_router(diagnosis_router.router, prefix=settings.api_prefix)
-    # app.include_router(incidents_router.router, prefix=settings.api_prefix)
-
+    # Future routers will be mounted here.
     return app
 
 

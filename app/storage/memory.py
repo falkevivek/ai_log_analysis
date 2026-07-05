@@ -32,7 +32,6 @@ from datetime import datetime, timezone
 from threading import Lock
 from typing import Any
 
-
 from app.storage.base import StorageInterface
 
 
@@ -54,7 +53,7 @@ class InMemoryStore(StorageInterface):
     # Write
     # ------------------------------------------------------------------
 
-    def save(self, collection: str, record: dict[str, Any]) -> dict[str, Any]:
+    async def save(self, collection: str, record: dict[str, Any]) -> dict[str, Any]:
         """
         Insert or update a record in the given collection.
 
@@ -91,7 +90,7 @@ class InMemoryStore(StorageInterface):
     # Read
     # ------------------------------------------------------------------
 
-    def get(self, collection: str, record_id: str) -> dict[str, Any] | None:
+    async def get(self, collection: str, record_id: str) -> dict[str, Any] | None:
         """
         Retrieve a single record by ID.
 
@@ -101,7 +100,7 @@ class InMemoryStore(StorageInterface):
             record = self._data[collection].get(record_id)
             return dict(record) if record else None
 
-    def list(self, collection: str) -> list[dict[str, Any]]:
+    async def list(self, collection: str) -> list[dict[str, Any]]:
         """
         Return all records in a collection, ordered by ``created_at`` ascending.
         """
@@ -113,7 +112,7 @@ class InMemoryStore(StorageInterface):
     # Delete
     # ------------------------------------------------------------------
 
-    def delete(self, collection: str, record_id: str) -> bool:
+    async def delete(self, collection: str, record_id: str) -> bool:
         """
         Remove a record by ID.
 
@@ -125,7 +124,7 @@ class InMemoryStore(StorageInterface):
                 return True
             return False
 
-    def clear(self, collection: str) -> None:
+    async def clear(self, collection: str) -> None:
         """Remove all records from a collection. Useful for development resets."""
         with self._lock:
             self._data[collection].clear()
@@ -134,17 +133,17 @@ class InMemoryStore(StorageInterface):
     # Diagnostics
     # ------------------------------------------------------------------
 
-    def count(self, collection: str) -> int:
+    async def count(self, collection: str) -> int:
         """Return the number of records in a collection."""
         with self._lock:
             return len(self._data[collection])
 
-    def collections(self) -> list[str]:
+    async def collections(self) -> list[str]:
         """Return the names of all non-empty collections."""
         with self._lock:
             return [name for name, records in self._data.items() if records]
 
-    def stats(self) -> dict[str, int]:
+    async def stats(self) -> dict[str, int]:
         """Return record counts per collection. Used by the health endpoint."""
         with self._lock:
             return {name: len(records) for name, records in self._data.items()}
