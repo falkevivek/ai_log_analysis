@@ -121,6 +121,9 @@ def create_application() -> FastAPI:
 
     # API routers.
     app.include_router(health_router.router, prefix=settings.api_prefix)
+    
+    from app.api.v1 import onboarding_router
+    app.include_router(onboarding_router, prefix=settings.api_prefix)
 
     # Future routers will be mounted here.
     return app

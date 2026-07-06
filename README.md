@@ -9,6 +9,7 @@
 
 - [Overview](#overview)
 - [Architecture](#architecture)
+- [LLM Architecture](#llm-architecture)
 - [Folder Structure](#folder-structure)
 - [Technology Stack](#technology-stack)
 - [Getting Started](#getting-started)
@@ -16,6 +17,7 @@
 - [Testing](#testing)
 - [API Reference](#api-reference)
 - [Configuration Reference](#configuration-reference)
+- [LLM Provider Switching](#llm-provider-switching)
 - [Future Modules](#future-modules)
 - [Contributing](#contributing)
 
@@ -57,6 +59,77 @@ Structured Diagnosis  ← the output
 ```
 
 > **Current Status**: Foundation phase. The pipeline structure is in place. Engines will be implemented in subsequent sprints.
+
+---
+
+## LLM Architecture
+
+The LLM Integration Layer decouples all business logic from any specific LLM provider.
+
+```
+Evidence Package
+      ↓
+PromptBuilder        ← provider-independent, serialises Evidence to text
+      ↓
+LlmManager           ← reads LLM_PROVIDER from .env, constructs adapter
+      ↓
+BaseLlmAdapter       ← abstract interface (one method: generate_diagnosis)
+      ↓
+┌─────────────────────────────────────────────────┐
+│  GeminiAdapter  │  LocalLlamaAdapter  │  MockAdapter  │
+│  (Google GenAI) │  (Barclays office)  │  (dev / CI)   │
+└─────────────────────────────────────────────────┘
+      ↓
+ResponseParser       ← provider-independent JSON validation
+      ↓
+Diagnosis domain object
+```
+
+### Provider Isolation Contract
+
+| Rule | Enforcement |
+|---|---|
+| Only `GeminiAdapter` may import `google.genai` | Module-level import guard |
+| Only `LocalLlamaAdapter` may contain Llama HTTP client code | No other file references it |
+| Only `LlmManager` reads `LLM_PROVIDER` | All other modules receive `BaseLlmAdapter` |
+| `LlmReasoningEngine` depends on the interface, not concretions | Constructor injection |
+
+### Running with Gemini
+
+```dotenv
+# .env
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=AIzaSy...your-key...
+GEMINI_MODEL=gemini-2.0-flash
+```
+
+```bash
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+### Running with Mock (Default — No API Key Needed)
+
+```dotenv
+# .env
+LLM_PROVIDER=mock
+```
+
+```bash
+uvicorn app.main:app --reload
+```
+
+### Future Local Llama Support (Barclays Office)
+
+```dotenv
+# .env  (office PC)
+LLM_PROVIDER=local_llama
+LOCAL_LLM_ENDPOINT=http://llama-server.barclays.internal:8080/v1/chat/completions
+LOCAL_LLM_MODEL=meta-llama/Meta-Llama-3.1-8B-Instruct
+```
+
+Implement `_execute_request` in `local_llama_adapter.py`. No other file changes.
+See [`docs/LLM_SWITCH_GUIDE.md`](docs/LLM_SWITCH_GUIDE.md) for the full migration guide.
 
 ---
 
@@ -171,6 +244,9 @@ ai-analysis-engine/
 | Migrations | Alembic | 1.14.0 |
 | Validation | Pydantic v2 | 2.9.2 |
 | Configuration | pydantic-settings | 2.6.1 |
+| LLM (Dev) | Google GenAI SDK | ≥1.19.0 |
+| LLM (Office) | Local Meta-Llama (httpx) | — |
+| HTTP Client | httpx | ≥0.28.0 |
 | Testing | pytest + pytest-asyncio | 8.3.4 |
 | Containerisation | Docker + Compose | — |
 
@@ -336,6 +412,35 @@ All responses use a consistent JSON envelope:
 
 ---
 
+## LLM Provider Switching
+
+Changing the active LLM provider requires **only `.env` changes** — zero code modifications.
+
+| Environment | `LLM_PROVIDER` | Additional vars needed |
+|---|---|---|
+| Local development (offline) | `mock` | None |
+| Local development (AI responses) | `gemini` | `GEMINI_API_KEY` |
+| Barclays Office (no internet) | `local_llama` | `LOCAL_LLM_ENDPOINT` |
+
+### Full Environment Variable Reference
+
+| Variable | Default | Description |
+|---|---|---|
+| `LLM_PROVIDER` | `mock` | Active LLM provider |
+| `GEMINI_API_KEY` | _(empty)_ | Google GenAI API key |
+| `GEMINI_MODEL` | `gemini-2.0-flash` | Gemini model name |
+| `LOCAL_LLM_ENDPOINT` | _(empty)_ | Barclays Llama server URL |
+| `LOCAL_LLM_MODEL` | `meta-llama/Meta-Llama-3.1-8B-Instruct` | Model in request payload |
+| `LOCAL_LLM_TIMEOUT` | `30.0` | HTTP timeout seconds |
+| `ENVIRONMENT` | `development` | `development` / `staging` / `production` |
+| `DEBUG` | `false` | Enable debug mode |
+| `LOG_LEVEL` | `INFO` | Root log level |
+| `API_PREFIX` | `/api/v1` | URL prefix for all v1 routes |
+
+See [`docs/LLM_SWITCH_GUIDE.md`](docs/LLM_SWITCH_GUIDE.md) for the complete operational guide.
+
+---
+
 ## Configuration Reference
 
 | Variable | Default | Description |
@@ -361,12 +466,12 @@ See [`.env.example`](.env.example) for the complete list including LLM and AWS p
 | Sprint | Module | Status |
 |---|---|---|
 | Foundation | Project setup, DB, Health API | ✅ **Complete** |
-| Sprint 2 | Observation Engine | 🔜 Planned |
-| Sprint 3 | Event + Timeline Engine | 🔜 Planned |
-| Sprint 4 | Incident + Evidence Engine | 🔜 Planned |
-| Sprint 5 | Context + Knowledge Base | 🔜 Planned |
-| Sprint 6 | Reasoning + Confidence Engine | 🔜 Planned |
-| Sprint 7 | Recommendation + Learning Engine | 🔜 Planned |
+| Sprint 2 | Observation Engine | ✅ **Complete** |
+| Sprint 3 | Event + Timeline Engine | ✅ **Complete** |
+| Sprint 4 | Incident + Evidence Engine | ✅ **Complete** |
+| Sprint 5 | Context + Knowledge Base | ✅ **Complete** |
+| Sprint 6 | LLM Integration Layer (Gemini + Mock + LocalLlama) | ✅ **Complete** |
+| Sprint 7 | Recommendation Engine | ✅ **Complete** |
 | Sprint 8 | Frontend SDK integration | 🔜 Planned |
 | Sprint 9 | Backend SDK integration | 🔜 Planned |
 | Sprint 10 | AWS CloudWatch integration | 🔜 Planned |

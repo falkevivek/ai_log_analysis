@@ -10,6 +10,9 @@ from app.engines.event_intelligence import EventIntelligenceEngine
 from app.engines.timeline_intelligence import TimelineIntelligenceEngine
 from app.engines.incident_builder import IncidentBuilder, IncidentConfig
 from app.engines.context_enrichment import ContextEnrichmentEngine
+from app.engines.evidence_builder import EvidenceBuilder
+from app.engines.llm_reasoning import LlmReasoningEngine
+from app.engines.recommendation import RecommendationEngine
 
 __all__ = [
     "LogProcessingEngine",
@@ -21,7 +24,13 @@ __all__ = [
     "IncidentBuilder",
     "IncidentConfig",
     "ContextEnrichmentEngine",
+    "EvidenceBuilder",
+    "LlmReasoningEngine",
+    "RecommendationEngine",
 ]
+
+
+
 
 
 

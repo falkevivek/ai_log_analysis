@@ -13,6 +13,7 @@ from app.schemas.domain import (
     Evidence,
     Diagnosis,
     Recommendation,
+    PipelineResult,
 )
 from app.schemas.correlation import CorrelationGroup
 
@@ -32,6 +33,7 @@ __all__ = [
     "Evidence",
     "Diagnosis",
     "Recommendation",
+    "PipelineResult",
     "CorrelationGroup",
 ]
 

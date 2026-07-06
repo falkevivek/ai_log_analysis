@@ -136,11 +136,25 @@ class Context(BaseModel):
 class Evidence(BaseModel):
     """Represents the complete package of collected facts ready for AI reasoning."""
 
-    observations: list[Observation] = Field(default_factory=list, description="Anomalies and observations collected")
-    timeline: Timeline = Field(..., description="The timeline context of events")
-    metrics: dict[str, Any] = Field(default_factory=dict, description="Relevant metrics datasets during the incident window")
-    historical_references: list[str] = Field(default_factory=list, description="IDs of past similar incident records")
+    incident_summary: str = Field(..., description="Concise natural language incident summary")
+    timeline_summary: str = Field(..., description="Summary of event timeline sequence")
+    event_summary: str = Field(..., description="Natural language timeline sequence description")
+    observation_summary: str = Field(..., description="Summary list details of observations captured")
+    affected_services: list[str] = Field(default_factory=list, description="Unique services impacted")
+    affected_components: list[str] = Field(default_factory=list, description="Unique components impacted")
+    error_codes: list[str] = Field(default_factory=list, description="Matched standard error signatures")
+    api_metadata: dict[str, Any] = Field(default_factory=dict, description="Metadata related to API endpoints involved")
+    config_metadata: dict[str, Any] = Field(default_factory=dict, description="Related configuration settings details")
+    environment: str = Field(..., description="Deployment environment target")
     known_errors: list[str] = Field(default_factory=list, description="Known error database reference matches")
+    historical_references: list[str] = Field(default_factory=list, description="IDs of past similar incident records")
+    deployment_info: dict[str, Any] = Field(default_factory=dict, description="Deployment and versioning specifics")
+    supporting_metrics: dict[str, Any] = Field(default_factory=dict, description="Operational and system metrics gathered")
+    evidence_confidence: float = Field(..., ge=0.0, le=1.0, description="Overall confidence level of facts collection accuracy")
+    additional_metadata: dict[str, Any] = Field(default_factory=dict, description="Additional context parameter tags")
+    timeline: Timeline = Field(..., description="The timeline context of events")
+    observations: list[Observation] = Field(default_factory=list, description="Anomalies and observations collected")
+
 
 
 class Diagnosis(BaseModel):
@@ -149,11 +163,37 @@ class Diagnosis(BaseModel):
     root_cause: str = Field(..., description="Identified core root cause of the incident")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence level of diagnosis (0.0 to 1.0)")
     explanation: str = Field(..., description="Detailed markdown explanation detailing reasoning and evidence chain")
+    evidence_references: list[str] = Field(default_factory=list, description="List of IDs or text statements from the Evidence package utilized for reasoning")
+    generated_at: datetime = Field(..., description="Timestamp when the diagnosis was generated")
+
 
 
 class Recommendation(BaseModel):
     """Represents operational recommendations for remediation."""
 
+    recommendation_id: str = Field(..., description="Unique recommendation identifier")
     immediate_action: str = Field(..., description="Suggested quick-fix or mitigation action to restore service")
+    investigation_steps: list[str] = Field(default_factory=list, description="Recommended diagnostic and inspection steps")
     permanent_solution: str = Field(..., description="Suggested long-term root cause resolution")
+    prevention_suggestions: list[str] = Field(default_factory=list, description="Suggested steps to prevent occurrence in the future")
+    known_error_references: list[str] = Field(default_factory=list, description="Related known error DB matches")
+    historical_incident_references: list[str] = Field(default_factory=list, description="Simulated historical tickets referencing this issue type")
+    recommendation_confidence: float = Field(..., ge=0.0, le=1.0, description="Overall confidence level of recommendation accuracy")
+    generated_at: datetime = Field(..., description="Timestamp when the recommendations were generated")
     additional_notes: Optional[str] = Field(None, description="Optional extra engineering or diagnostic notes")
+
+
+class PipelineResult(BaseModel):
+    """Represents the complete output of the AI Analysis pipeline execution."""
+
+    session_id: str = Field(..., description="Unique analysis session UUID identifier")
+    incident: Optional[Incident] = Field(None, description="The built Incident object")
+    context: Optional[Context] = Field(None, description="The gathered Context object")
+    evidence: Optional[Evidence] = Field(None, description="The consolidated Evidence Package")
+    diagnosis: Optional[Diagnosis] = Field(None, description="The generated Diagnosis object")
+    recommendation: Optional[Recommendation] = Field(None, description="The generated Recommendation object")
+    execution_stats: dict[str, float] = Field(default_factory=dict, description="Execution duration stats in milliseconds per stage")
+    status: str = Field(..., description="Final status: SUCCESS, PARTIAL_FAILURE, or FAILED")
+    error_message: Optional[str] = Field(None, description="Detailed error logs if failure occurred")
+
+
